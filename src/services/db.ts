@@ -1,11 +1,10 @@
 import { Pool } from 'pg';
 
 const pool = new Pool({
-  user: 'meu_usuario',
-  host: 'localhost',
-  database: 'meu_banco',
-  password: 'minha_senha',
-  port: 5432,
+  connectionString: 'postgresql://teste_9f9e_user:FailiEd1RMtIdeSyCKXFUHFC6C685tiq@dpg-d0rjg0bipnbc73ba3tgg-a.oregon-postgres.render.com/teste_9f9e',
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 export const getDocuments = async () => {
