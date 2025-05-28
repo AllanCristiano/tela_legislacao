@@ -27,12 +27,16 @@ function App() {
   useEffect(() => {
     const fetchDocuments = async () => {
       try {
+        setLoading(true);
+        setError(null);
         const documents = await getDocuments();
         setAllDocuments(documents);
         setFilteredDocuments(documents);
-        setLoading(false);
       } catch (err) {
-        setError('Erro ao carregar documentos');
+        setError('Não foi possível carregar os documentos. Por favor, verifique sua conexão e tente novamente.');
+        setAllDocuments([]);
+        setFilteredDocuments([]);
+      } finally {
         setLoading(false);
       }
     };
@@ -75,6 +79,23 @@ function App() {
     setSearchQuery('');
   };
 
+  // Retry loading documents
+  const handleRetry = () => {
+    setLoading(true);
+    setError(null);
+    getDocuments()
+      .then(documents => {
+        setAllDocuments(documents);
+        setFilteredDocuments(documents);
+      })
+      .catch(() => {
+        setError('Não foi possível carregar os documentos. Por favor, verifique sua conexão e tente novamente.');
+        setAllDocuments([]);
+        setFilteredDocuments([]);
+      })
+      .finally(() => setLoading(false));
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -89,11 +110,12 @@ function App() {
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-700">{error}</p>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md w-full mx-4">
+          <h2 className="text-red-800 text-lg font-semibold mb-2">Erro ao carregar documentos</h2>
+          <p className="text-red-700 mb-4">{error}</p>
           <button 
-            onClick={() => window.location.reload()} 
-            className="mt-2 text-sm text-red-600 hover:text-red-800"
+            onClick={handleRetry}
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
           >
             Tentar novamente
           </button>
@@ -144,4 +166,4 @@ function App() {
   );
 }
 
-export default App
+export default App;
