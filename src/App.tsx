@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { mockDocuments } from './data/mockDocuments';
 import { Document, DocumentCategory } from './types';
 import { filterDocuments } from './utils/documentUtils';
+import { getDocuments } from './services/db';
 
 // Components
 import FilterPanel from './components/FilterPanel';
@@ -18,8 +18,27 @@ function App() {
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState<boolean>(false);
   
   // Documents state
-  const [allDocuments] = useState<Document[]>(mockDocuments);
-  const [filteredDocuments, setFilteredDocuments] = useState<Document[]>(mockDocuments);
+  const [allDocuments, setAllDocuments] = useState<Document[]>([]);
+  const [filteredDocuments, setFilteredDocuments] = useState<Document[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch documents from database
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      try {
+        const documents = await getDocuments();
+        setAllDocuments(documents);
+        setFilteredDocuments(documents);
+        setLoading(false);
+      } catch (err) {
+        setError('Erro ao carregar documentos');
+        setLoading(false);
+      }
+    };
+
+    fetchDocuments();
+  }, []);
 
   // Apply filters when dependencies change
   useEffect(() => {
@@ -56,14 +75,36 @@ function App() {
     setSearchQuery('');
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando documentos...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-700">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-2 text-sm text-red-600 hover:text-red-800"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="container mx-auto px-4 py-6">
-        {/* 
-        <h1 className="text-3xl font-bold text-gray-800 mb-6">
-          Portal de Legislação
-        </h1>
-        */}
         {/* Stats Dashboard */}
         <DocumentStats 
           allDocuments={allDocuments}
@@ -102,5 +143,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
