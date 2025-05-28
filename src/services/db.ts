@@ -1,39 +1,31 @@
-import { createClient } from '@libsql/client';
+import { Pool } from 'pg';
 import { Document } from '../types';
 import { mockDocuments } from '../data/mockDocuments';
 
-const client = createClient({
-  url: 'file:local.db',
+const pool = new Pool({
+  host: 'dpg-d0rjg0bipnbc73ba3tgg-a.oregon-postgres.render.com',
+  database: 'teste_9f9e',
+  user: 'teste_9f9e_user',
+  password: 'FailiEd1RMtIdeSyCKXFUHFC6C685tiq',
+  port: 5432,
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 const initializeDatabase = async () => {
   try {
-    await client.execute(`
-      CREATE TABLE IF NOT EXISTS documents (
-        id TEXT PRIMARY KEY,
-        number TEXT NOT NULL,
-        date TEXT NOT NULL,
-        title TEXT NOT NULL,
-        description TEXT NOT NULL,
-        category TEXT NOT NULL CHECK (category IN ('portaria', 'decreto', 'lei-ordinaria', 'lei-complementar')),
-        content TEXT,
-        file_url TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
     // Check if we need to seed the database
-    const count = await client.execute('SELECT COUNT(*) as count FROM documents');
-    if (count.rows[0].count === 0) {
+    const result = await pool.query('SELECT COUNT(*) as count FROM documents');
+    if (parseInt(result.rows[0].count) === 0) {
       // Seed with mock data
       for (const doc of mockDocuments) {
-        await client.execute({
-          sql: `
-            INSERT INTO documents (id, number, date, title, description, category, content, file_url)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          `,
-          args: [
-            doc.id,
+        await pool.query(
+          `INSERT INTO documents 
+            (number, date, title, description, category, content, file_url)
+           VALUES 
+            ($1, $2, $3, $4, $5, $6, $7)`,
+          [
             doc.number,
             doc.date,
             doc.title,
@@ -42,7 +34,7 @@ const initializeDatabase = async () => {
             doc.content || null,
             doc.fileUrl || null
           ]
-        });
+        );
       }
     }
   } catch (error) {
@@ -54,8 +46,12 @@ const initializeDatabase = async () => {
 export const getDocuments = async (): Promise<Document[]> => {
   try {
     await initializeDatabase();
-    const result = await client.execute('SELECT * FROM documents ORDER BY date DESC');
-    return result.rows as Document[];
+    const result = await pool.query('SELECT * FROM documents ORDER BY date DESC');
+    return result.rows.map(row => ({
+      ...row,
+      id: row.id.toString(),
+      fileUrl: row.file_url
+    }));
   } catch (error) {
     console.error('Error fetching documents:', error);
     throw error;
@@ -72,15 +68,13 @@ export const createDocument = async (document: {
   file_url?: string;
 }): Promise<Document> => {
   try {
-    await initializeDatabase();
-    const id = `doc-${Date.now()}`;
-    await client.execute({
-      sql: `
-        INSERT INTO documents (id, number, date, title, description, category, content, file_url)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-      args: [
-        id,
+    const result = await pool.query(
+      `INSERT INTO documents 
+        (number, date, title, description, category, content, file_url)
+       VALUES 
+        ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [
         document.number,
         document.date,
         document.title,
@@ -89,14 +83,14 @@ export const createDocument = async (document: {
         document.content || null,
         document.file_url || null
       ]
-    });
+    );
 
-    const result = await client.execute({
-      sql: 'SELECT * FROM documents WHERE id = ?',
-      args: [id]
-    });
-
-    return result.rows[0] as Document;
+    const row = result.rows[0];
+    return {
+      ...row,
+      id: row.id.toString(),
+      fileUrl: row.file_url
+    };
   } catch (error) {
     console.error('Error creating document:', error);
     throw error;
