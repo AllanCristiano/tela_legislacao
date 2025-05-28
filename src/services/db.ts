@@ -1,63 +1,52 @@
-import { Pool } from 'pg';
+import { Document } from '../types'
 
-const pool = new Pool({
-  connectionString: 'postgresql://teste_9f9e_user:FailiEd1RMtIdeSyCKXFUHFC6C685tiq@dpg-d0rjg0bipnbc73ba3tgg-a.oregon-postgres.render.com/teste_9f9e',
-  ssl: {
-    rejectUnauthorized: false
-  }
-});
+const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/documents`
 
-export const getDocuments = async () => {
+export const getDocuments = async (): Promise<Document[]> => {
   try {
-    const result = await pool.query(`
-      SELECT 
-        id,
-        number,
-        date,
-        title,
-        description,
-        category,
-        content,
-        file_url
-      FROM documents
-      ORDER BY date DESC
-    `);
-    return result.rows;
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+      },
+    })
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch documents')
+    }
+    
+    return await response.json()
   } catch (error) {
-    console.error('Error fetching documents:', error);
-    throw error;
+    console.error('Error fetching documents:', error)
+    throw error
   }
-};
+}
 
 export const createDocument = async (document: {
-  number: string;
-  date: string;
-  title: string;
-  description: string;
-  category: string;
-  content?: string;
-  file_url?: string;
-}) => {
+  number: string
+  date: string
+  title: string
+  description: string
+  category: string
+  content?: string
+  file_url?: string
+}): Promise<Document> => {
   try {
-    const result = await pool.query(
-      `INSERT INTO documents 
-        (number, date, title, description, category, content, file_url)
-       VALUES 
-        ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING *`,
-      [
-        document.number,
-        document.date,
-        document.title,
-        document.description,
-        document.category,
-        document.content,
-        document.file_url,
-      ]
-    );
-    return result.rows[0];
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(document),
+    })
+    
+    if (!response.ok) {
+      throw new Error('Failed to create document')
+    }
+    
+    return await response.json()
   } catch (error) {
-    console.error('Error creating document:', error);
-    throw error;
+    console.error('Error creating document:', error)
+    throw error
   }
-};
+}
